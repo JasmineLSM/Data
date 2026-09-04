@@ -1,0 +1,37 @@
+CREATE OR REPLACE TABLE
+  `datset-1.portfolio.ga4_marketing_summary` AS
+
+SELECT
+  PARSE_DATE('%Y%m%d', event_date) AS date,
+  COALESCE(geo.country, 'Unknown') AS country,
+  COALESCE(device.category, 'Unknown') AS device,
+  COALESCE(traffic_source.source, '(direct)') AS source,
+  COALESCE(traffic_source.medium, '(none)') AS medium,
+
+  COUNT(DISTINCT user_pseudo_id) AS users,
+  COUNTIF(event_name = 'session_start') AS sessions,
+  COUNTIF(event_name = 'view_item') AS product_views,
+  COUNTIF(event_name = 'add_to_cart') AS add_to_cart,
+  COUNTIF(event_name = 'begin_checkout') AS checkouts,
+  COUNTIF(event_name = 'purchase') AS purchases,
+
+  SUM(
+    CASE
+      WHEN event_name = 'purchase'
+      THEN COALESCE(ecommerce.purchase_revenue_in_usd, 0)
+      ELSE 0
+    END
+  ) AS revenue_usd
+
+FROM
+  `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*`
+
+WHERE
+  _TABLE_SUFFIX BETWEEN '20201101' AND '20210131'
+
+GROUP BY
+  date,
+  country,
+  device,
+  source,
+  medium;
